@@ -1,0 +1,35 @@
+{
+  "name": "webcodecs-nodejs",
+  "version": "1.0.0",
+  "description": "WebCodecs API implementation for Node.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "vitest run -c vitest.browser.config.ts",
+    "test:node": "vitest run",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "webcodecs",
+    "video",
+    "audio",
+    "encoder",
+    "decoder",
+    "media"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/browser": "^4.0.14",
+    "@vitest/browser-playwright": "^4.0.14",
+    "@vitest/coverage-v8": "^4.0.14",
+    "playwright": "^1.57.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  }
+}
