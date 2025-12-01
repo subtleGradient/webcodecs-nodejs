@@ -177,6 +177,8 @@ So a "WebCodecs runtime" is:
 
 **Likely implementation path:**
 
+> 📖 **Detailed research available**: For a complete technical deep-dive on implementing Node.js WebCodecs on Linux using N-API and FFmpeg, see [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md).
+
 1. **Node core or native addon**
    - Implement the WebCodecs classes in C++:
      - `VideoDecoder`, `VideoEncoder`, `AudioDecoder`, `AudioEncoder`, `VideoFrame`, `EncodedVideoChunk`, `ImageDecoder`, etc.
@@ -500,3 +502,13 @@ Reasons not to bother:
 - **Node.js Challenge**
   - WebCodecs Node.js $10k Challenge (Vjeux):  
     https://raw.githubusercontent.com/vjeux/webcodecs-nodejs-10k-challenge/refs/heads/main/README.md
+
+---
+
+## Related Documents
+
+- [Implementation Options](./options.md) — Technical comparison of implementation approaches
+- [Node.js Implementation Tasks](./nodejs-implementation.md) — High-level task breakdown for Node.js
+- [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) — Detailed technical research for Linux implementation
+- [Deno Implementation Tasks](./deno-implementation.md) — Task breakdown for Deno
+- [Bun Implementation Tasks](./bun-implementation.md) — Task breakdown for Bun
