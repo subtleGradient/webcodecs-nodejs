@@ -98,7 +98,8 @@ napi_status NativeVideoFrame::CopyTo(
     const CopyOptions& options) {
   
   if (closed_) {
-    return ThrowInvalidStateError(env);
+    napi_throw_error(env, nullptr, "InvalidStateError: VideoFrame is closed");
+    return napi_pending_exception;
   }
   
   // Get destination buffer info

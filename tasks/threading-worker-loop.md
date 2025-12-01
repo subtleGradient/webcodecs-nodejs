@@ -141,6 +141,9 @@ case CommandType::CLOSE:
 
 ```cpp
 void ProcessDecode(Command& cmd) {
+  // Extract packet from command data
+  AVPacket* packet = static_cast<AVPacket*>(cmd.data);
+  
   int ret = avcodec_send_packet(ctx_, packet);
   if (ret < 0 && ret != AVERROR(EAGAIN)) {
     // Emit error to JS via errorTSFN

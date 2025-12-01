@@ -41,7 +41,22 @@ From [FFmpeg Integration Strategy](../research/nodejs-linux-napi-ffmpeg.md#2-ffm
 
 ## Build Configuration
 
-### Core FFmpeg Options
+### Build Variants
+
+The build script should support multiple configurations via environment variables:
+
+```bash
+# Default: LGPL-only build
+./scripts/build-ffmpeg.sh
+
+# GPL build with x264/x265
+BUILD_VARIANT=gpl ./scripts/build-ffmpeg.sh
+
+# System FFmpeg (dynamic linking)
+BUILD_VARIANT=system ./scripts/build-ffmpeg.sh
+```
+
+### Core FFmpeg Options (LGPL Default)
 
 ```bash
 ./configure \

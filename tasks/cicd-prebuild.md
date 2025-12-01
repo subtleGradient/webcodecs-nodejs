@@ -148,8 +148,9 @@ jobs:
       - name: Build in arm64 container
         run: |
           docker run --rm --platform linux/arm64 \
-            -v ${{ github.workspace }}:/workspace \
+            -v ${{ github.workspace }}:/workspace:rw \
             -w /workspace \
+            --security-opt=no-new-privileges:true \
             node:20 \
             bash -c "npm ci && npm run build && npx prebuildify --napi --strip"
             

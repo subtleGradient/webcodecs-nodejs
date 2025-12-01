@@ -221,11 +221,11 @@ AVFrame* DownloadGPUFrame(AVFrame* hw_frame) {
 interface HWCapabilities {
   nvidia: {
     available: boolean;
-    codecs: string[];  // ['h264', 'hevc', 'av1']
+    codecs: string[];  // FFmpeg codec names, e.g., ['h264', 'hevc', 'av1']
   };
   vaapi: {
     available: boolean;
-    codecs: string[];
+    codecs: string[];  // FFmpeg codec names, e.g., ['h264', 'hevc', 'vp9']
   };
 }
 
