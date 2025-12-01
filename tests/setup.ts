@@ -6,4 +6,4 @@
  */
 
 // Import the polyfill - it auto-installs on globalThis in Node.js
-import '../src/index.js';
+import '../src/index';

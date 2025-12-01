@@ -8,6 +8,16 @@
 
 export const VERSION = '0.0.1';
 
+// DOMException polyfill for older Node.js versions (pre-17)
+const WebCodecsDOMException = typeof DOMException !== 'undefined' 
+  ? DOMException 
+  : class DOMException extends Error {
+      constructor(message?: string, name?: string) {
+        super(message);
+        this.name = name || 'Error';
+      }
+    };
+
 // Types for WebCodecs API
 type CodecState = 'unconfigured' | 'configured' | 'closed';
 
@@ -119,7 +129,7 @@ export class VideoEncoder {
 
   configure(config: VideoEncoderConfig): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot configure a closed encoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot configure a closed encoder', 'InvalidStateError');
     }
     if (!isCodecSupported(config.codec, SUPPORTED_VIDEO_CODECS)) {
       this._error(new Error(`Unsupported codec: ${config.codec}`));
@@ -131,19 +141,19 @@ export class VideoEncoder {
 
   encode(_frame: unknown, _options?: unknown): void {
     if (this._state !== 'configured') {
-      throw new DOMException('Encoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
-      throw new DOMException('Encoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
   }
 
   reset(): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot reset a closed encoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot reset a closed encoder', 'InvalidStateError');
     }
     this._state = 'unconfigured';
     this._encodeQueueSize = 0;
@@ -183,7 +193,7 @@ export class VideoDecoder {
 
   configure(config: VideoDecoderConfig): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot configure a closed decoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot configure a closed decoder', 'InvalidStateError');
     }
     if (!isCodecSupported(config.codec, SUPPORTED_VIDEO_CODECS)) {
       this._error(new Error(`Unsupported codec: ${config.codec}`));
@@ -195,19 +205,19 @@ export class VideoDecoder {
 
   decode(_chunk: unknown): void {
     if (this._state !== 'configured') {
-      throw new DOMException('Decoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
-      throw new DOMException('Decoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
   }
 
   reset(): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot reset a closed decoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot reset a closed decoder', 'InvalidStateError');
     }
     this._state = 'unconfigured';
     this._decodeQueueSize = 0;
@@ -247,7 +257,7 @@ export class AudioEncoder {
 
   configure(config: AudioEncoderConfig): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot configure a closed encoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot configure a closed encoder', 'InvalidStateError');
     }
     if (!isCodecSupported(config.codec, SUPPORTED_AUDIO_CODECS)) {
       this._error(new Error(`Unsupported codec: ${config.codec}`));
@@ -259,19 +269,19 @@ export class AudioEncoder {
 
   encode(_data: unknown): void {
     if (this._state !== 'configured') {
-      throw new DOMException('Encoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
-      throw new DOMException('Encoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
   }
 
   reset(): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot reset a closed encoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot reset a closed encoder', 'InvalidStateError');
     }
     this._state = 'unconfigured';
     this._encodeQueueSize = 0;
@@ -311,7 +321,7 @@ export class AudioDecoder {
 
   configure(config: AudioDecoderConfig): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot configure a closed decoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot configure a closed decoder', 'InvalidStateError');
     }
     if (!isCodecSupported(config.codec, SUPPORTED_AUDIO_CODECS)) {
       this._error(new Error(`Unsupported codec: ${config.codec}`));
@@ -323,19 +333,19 @@ export class AudioDecoder {
 
   decode(_chunk: unknown): void {
     if (this._state !== 'configured') {
-      throw new DOMException('Decoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
-      throw new DOMException('Decoder is not configured', 'InvalidStateError');
+      throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
   }
 
   reset(): void {
     if (this._state === 'closed') {
-      throw new DOMException('Cannot reset a closed decoder', 'InvalidStateError');
+      throw new WebCodecsDOMException('Cannot reset a closed decoder', 'InvalidStateError');
     }
     this._state = 'unconfigured';
     this._decodeQueueSize = 0;
