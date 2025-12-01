@@ -542,14 +542,10 @@ describe('VideoDecoder Functional Tests', () => {
 
     // First, encode a frame to get valid encoded data
     const encodedChunks: EncodedVideoChunk[] = [];
-    let encoderConfig: VideoEncoderConfig | null = null;
     
     const encoder = new VideoEncoder({
-      output: (chunk, metadata) => {
+      output: (chunk) => {
         encodedChunks.push(chunk);
-        if (metadata?.decoderConfig) {
-          encoderConfig = metadata.decoderConfig;
-        }
       },
       error: () => {},
     });
