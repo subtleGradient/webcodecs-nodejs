@@ -2,7 +2,9 @@
 
 This document explores various approaches to implementing the WebCodecs API in Node.js, based on research of existing implementations and related projects.
 
-> **See also**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) for detailed architecture and implementation guidance for the FFmpeg approach on Linux.
+> **See also**: 
+> - [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) for detailed architecture and implementation guidance for the FFmpeg approach on Linux.
+> - **NEW**: [FFmpeg N-API Bindings Research](./ffmpeg-napi.md) for existing N-API bindings that can accelerate development.
 
 ## Overview
 
@@ -10,9 +12,9 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 
 ## Implementation Options
 
-### Option 1: FFmpeg via N-API
+### Option 1: FFmpeg via N-API (From Scratch)
 
-**Description**: Create Node.js native bindings to FFmpeg's libavcodec, libavformat, and related libraries.
+**Description**: Create Node.js native bindings to FFmpeg's libavcodec, libavformat, and related libraries from scratch.
 
 > 📖 **Detailed research available**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) covers architecture, threading, memory management, codec mapping, licensing, and distribution for this approach.
 
@@ -40,6 +42,44 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 - FFmpeg libavcodec: https://github.com/FFmpeg/FFmpeg/tree/master/libavcodec
 - Node.js N-API: https://nodejs.org/api/n-api.html
 - Similar projects: node-ffmpeg-bindings, fluent-ffmpeg
+
+---
+
+### Option 1b: Existing FFmpeg N-API Bindings + WebCodecs Shim ⭐ NEW
+
+**Description**: Use an existing, production-ready FFmpeg N-API binding (such as node-av) and build a thin WebCodecs-compliant adapter layer on top.
+
+> 📖 **Detailed research available**: [FFmpeg N-API Bindings Research](./ffmpeg-napi.md) covers available libraries, comparison, and recommended approach.
+
+**Approach**:
+1. Select an existing FFmpeg N-API library (recommended: node-av)
+2. Build WebCodecs-compliant TypeScript classes (`VideoDecoder`, `VideoEncoder`, etc.)
+3. Map WebCodecs API calls to the underlying library's API
+4. Implement WebCodecs state machine and error semantics in the adapter layer
+
+**Pros**:
+- **Avoids the largest yak**: raw FFmpeg + N-API integration already done
+- Prebuilt binaries available for all major platforms
+- Hardware acceleration support (node-av supports CUDA, VAAPI)
+- Full TypeScript support with modern async patterns
+- Significant time savings (estimated 2-3 weeks)
+- Battle-tested FFmpeg integration
+
+**Cons**:
+- Dependent on third-party library maintenance
+- May have semantic gaps requiring workarounds
+- Less control over low-level behavior
+- Need to map between two different APIs
+
+**Effort Estimate**: **Low-Medium** (significantly lower than from-scratch)
+
+**Key Libraries**:
+- **node-av (recommended)**: [seydx/node-av](https://github.com/seydx/node-av) — Best combination of features, prebuilds, and HW accel
+- **@mmomtchev/ffmpeg**: [mmomtchev/ffmpeg](https://github.com/mmomtchev/ffmpeg) — Streams-based API, good if you prefer that model
+
+**Recommended Next Steps**:
+- [Evaluate FFmpeg N-API Bindings](../tasks/evaluate-ffmpeg-napi-bindings.md)
+- [VideoDecoder Shim on node-av](../tasks/videodecoder-shim-node-av.md)
 
 ---
 
@@ -188,7 +228,8 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 
 | Option | Effort | Performance | Portability | Maintenance |
 |--------|--------|-------------|-------------|-------------|
-| FFmpeg N-API | High | Excellent | Medium | Medium |
+| **FFmpeg N-API Bindings + Shim** ⭐ | **Low-Medium** | **Excellent** | **Good** | **Low** |
+| FFmpeg N-API (from scratch) | High | Excellent | Medium | Medium |
 | Browser Port | Very High | Excellent | Low | High |
 | Bun-Style | Medium | Good | Low | Medium |
 | WASM | Low | Medium | Excellent | Low |
@@ -199,12 +240,38 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 
 For the $10k challenge timeline (1 month), we recommend:
 
-### Phase 1: Quick Start with WASM (Week 1-2)
+### ⭐ NEW: Fastest Path — Existing N-API Bindings + WebCodecs Shim
+
+Based on the discovery of existing production-ready FFmpeg N-API bindings (see [FFmpeg N-API Bindings Research](./ffmpeg-napi.md)), the fastest path is now:
+
+**Week 1: Foundation**
+1. Evaluate node-av and @mmomtchev/ffmpeg ([Evaluate FFmpeg N-API Bindings](../tasks/evaluate-ffmpeg-napi-bindings.md))
+2. Select the best candidate (likely node-av)
+3. Build VideoDecoder shim ([VideoDecoder Shim on node-av](../tasks/videodecoder-shim-node-av.md))
+
+**Week 2: Core Classes**
+1. Complete VideoDecoder with state machine, error handling
+2. Build VideoEncoder shim
+3. Implement VideoFrame and EncodedVideoChunk wrappers
+
+**Week 3-4: Polish + Testing**
+1. Add AudioDecoder, AudioEncoder shims
+2. Run WPT test subset
+3. Implement isConfigSupported() accurately
+4. Documentation and examples
+
+This approach can save **2-3 weeks** compared to building raw N-API bindings from scratch.
+
+### Alternative: WASM + Native Hybrid (Original Recommendation)
+
+If the N-API binding approach hits blockers, fall back to:
+
+#### Phase 1: Quick Start with WASM (Week 1-2)
 1. Use libavjs-webcodecs-polyfill as a starting point
 2. Adapt for Node.js environment
 3. Get tests passing with basic functionality
 
-### Phase 2: Optimize with Native Bindings (Week 3-4)
+#### Phase 2: Optimize with Native Bindings (Week 3-4)
 1. Add FFmpeg N-API bindings for performance-critical codecs (VP8, H.264)
 2. Use WASM as fallback
 3. Implement hardware acceleration detection
@@ -221,14 +288,17 @@ For the $10k challenge timeline (1 month), we recommend:
 2. **Mediabunny** - High-level video editing on WebCodecs
 3. **Effect-TS** - Functional patterns for async operations
 4. **libavjs-webcodecs-polyfill** - Pure JS WebCodecs polyfill
+5. **node-av** ⭐ NEW - Production-ready FFmpeg N-API bindings with HW accel
+6. **@mmomtchev/ffmpeg** ⭐ NEW - FFmpeg bindings with Node.js Streams API
 
 ## Conclusion
 
-The most practical approach for rapid development is to start with WebAssembly-based codecs (Option 4) and progressively add native optimizations (Option 1). This provides:
+**Updated recommendation**: The most practical approach for rapid development is now to leverage existing FFmpeg N-API bindings (Option 1b) and build a WebCodecs shim layer on top:
 
-1. **Immediate functionality** - Get tests passing quickly
-2. **Broad compatibility** - Works on any platform
-3. **Performance path** - Clear upgrade route to native
-4. **Lower risk** - Incremental development
+1. **Fastest time to working code** — Skip raw N-API development
+2. **Production-ready FFmpeg integration** — Already battle-tested
+3. **Hardware acceleration included** — node-av supports CUDA, VAAPI
+4. **Excellent performance** — Native FFmpeg, not WASM
+5. **Lower risk** — Smaller codebase to maintain
 
-The WASM approach using libavjs-webcodecs-polyfill can likely get basic functionality working within days, providing a foundation for further optimization.
+If the N-API binding approach encounters blockers, the WASM approach (Option 4) remains a viable fallback that can get basic functionality working within days.

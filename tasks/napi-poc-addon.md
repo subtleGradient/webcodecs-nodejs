@@ -13,6 +13,13 @@ timeline: Week 1
 
 Build a minimal N-API addon that validates the core architecture patterns for WebCodecs bindings.
 
+> ⚠️ **Alternative Path Available**: Consider using existing FFmpeg N-API bindings (node-av, @mmomtchev/ffmpeg) instead of building from scratch. See:
+> - [FFmpeg N-API Bindings Research](../research/ffmpeg-napi.md)
+> - [Evaluate FFmpeg N-API Bindings](./evaluate-ffmpeg-napi-bindings.md)
+> - [VideoDecoder Shim on node-av](./videodecoder-shim-node-av.md)
+>
+> This task is still valuable if the existing bindings have gaps, or if you want full control over the native layer.
+
 ## Objective
 
 Create a `DummyDecoder` N-API class that demonstrates:
