@@ -1,0 +1,3 @@
+[submodule "libs/libavjs-webcodecs-polyfill"]
+	path = libs/libavjs-webcodecs-polyfill
+	url = https://github.com/ennuicastr/libavjs-webcodecs-polyfill.git
