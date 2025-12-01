@@ -69,5 +69,6 @@ if (typeof globalThis.ImageDecoder === 'undefined') {
       return supportedTypes.includes(type.toLowerCase());
     }
   }
-  (globalThis as unknown as Record<string, unknown>).ImageDecoder = ImageDecoder;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ImageDecoder = ImageDecoder;
 }
