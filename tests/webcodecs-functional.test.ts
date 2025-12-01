@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
+import { POLYFILL_CLEANUP_DELAY_MS } from './setup';
 
 // Helper to check if WebCodecs API is available
 const isWebCodecsAvailable = () => {
@@ -519,7 +520,10 @@ describe('VideoEncoder Functional Tests', () => {
 describe('VideoDecoder Functional Tests', () => {
   let decoder: VideoDecoder | null = null;
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Note: The polyfill has async internal cleanup that can throw after close.
+    // We add a small delay to let pending operations complete.
+    await new Promise(resolve => setTimeout(resolve, POLYFILL_CLEANUP_DELAY_MS));
     if (decoder && decoder.state !== 'closed') {
       decoder.close();
     }

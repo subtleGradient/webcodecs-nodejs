@@ -8,6 +8,26 @@
 import * as LibAVWebCodecs from '../libs/libavjs-webcodecs-polyfill/dist/libavjs-webcodecs-polyfill.mjs';
 import LibAV from '@libav.js/variant-webm-vp9';
 
+/**
+ * Delay in milliseconds to wait for polyfill internal async cleanup.
+ * The libavjs-webcodecs-polyfill has internal async handlers that may 
+ * throw errors if we close encoders/decoders too quickly.
+ */
+export const POLYFILL_CLEANUP_DELAY_MS = 50;
+
+// Handle known polyfill bugs that cause unhandled rejections during cleanup
+// The libavjs-webcodecs-polyfill can throw "Decoder closed" or "Encoder closed"
+// errors during internal async cleanup which are not actionable.
+process.on('unhandledRejection', (reason: unknown) => {
+  const message = (reason as { message?: string })?.message;
+  if (message && (message.includes('Decoder closed') || message.includes('Encoder closed'))) {
+    // Suppress known polyfill cleanup errors
+    return;
+  }
+  // Re-throw unknown errors
+  throw reason;
+});
+
 // Polyfill DOMRect for Node.js (required by VideoFrame in libavjs-webcodecs-polyfill)
 if (typeof globalThis.DOMRect === 'undefined') {
   class DOMRect {
