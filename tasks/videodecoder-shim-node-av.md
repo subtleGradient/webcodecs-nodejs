@@ -87,6 +87,8 @@ type CodecState = "unconfigured" | "configured" | "closed";
 
 ### VideoDecoder Class
 
+> **Note**: This is a conceptual sketch showing the API mapping. Helper functions like `mapPixelFormat`, `alignTo`, and `checkCodecSupport` would need to be implemented.
+
 ```typescript
 import { Decoder } from 'node-av';
 import { parseCodecString } from './codec-parser';
@@ -228,6 +230,8 @@ export class VideoDecoder {
 
 ### Key Mapping Functions
 
+> **Note**: These are helper functions that would need to be implemented.
+
 ```typescript
 // Map node-av pixel format to WebCodecs VideoPixelFormat
 function mapPixelFormat(format: string): VideoPixelFormat {
@@ -248,6 +252,18 @@ function normalizeConfig(config: VideoDecoderConfig): VideoDecoderConfig {
     codedWidth: config.codedWidth ? alignTo(config.codedWidth, 2) : undefined,
     codedHeight: config.codedHeight ? alignTo(config.codedHeight, 2) : undefined,
   };
+}
+
+// Helper to align value to a multiple
+function alignTo(value: number, alignment: number): number {
+  return Math.ceil(value / alignment) * alignment;
+}
+
+// Check if codec is supported by node-av
+async function checkCodecSupport(codecId: string): Promise<boolean> {
+  // TODO: Implementation would query node-av's supported codecs
+  // or attempt to create a decoder instance
+  return true;
 }
 ```
 
