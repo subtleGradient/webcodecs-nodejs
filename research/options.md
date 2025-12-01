@@ -64,7 +64,7 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 
 **Key Files/References**:
 - Chromium WebCodecs: https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/modules/webcodecs/
-- WebKit WebCodecs: https://github.com/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/tree/main/Source/WebCore/Modules/webcodecs/
+- WebKit WebCodecs: https://trac.webkit.org/browser/trunk/Source/WebCore/Modules/webcodecs
 
 ---
 
@@ -120,9 +120,9 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 **Effort Estimate**: Low-Medium
 
 **Key Files/References**:
-- libavjs-webcodecs-polyfill: https://github.com/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun-webcodecs-polyfill
-- ffmpeg.wasm: https://github.com/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun.wasm/ffmpeg.wasm
-- libav.js: https://github.com/nickolasbraun/nickolasbraun/nicholasbraun.js
+- libavjs-webcodecs-polyfill: https://github.com/nickolasbraun/libavjs-webcodecs-polyfill
+- ffmpeg.wasm: https://github.com/nickolasbraun/ffmpeg.wasm
+- libav.js: https://github.com/nickolasbraun/libav.js
 
 ---
 

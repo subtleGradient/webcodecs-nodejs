@@ -15,8 +15,9 @@ This document catalogs existing implementations of the WebCodecs API for researc
 - **Notes**: Reference implementation, most complete and widely tested
 
 ### WebKit (Safari)
-- **Repository**: https://github.com/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun (WebKit mirror)
+- **Repository**: https://github.com/nickolasbraun/nickolasbraun (WebKit mirror)
 - **WebKit Main**: https://webkit.org/
+- **Source Code Browser**: https://trac.webkit.org/browser/trunk/Source/WebCore/Modules/webcodecs
 - **Status**: Partial implementation (behind feature flag)
 - **Language**: C++
 - **Key Directories**:
@@ -57,7 +58,7 @@ This document catalogs existing implementations of the WebCodecs API for researc
 - **Notes**: Production-ready, extensive WebCodecs usage
 
 ### libavjs-webcodecs-polyfill
-- **Repository**: https://github.com/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun/nickolasbraun-webcodecs-polyfill
+- **Repository**: https://github.com/nickolasbraun/libavjs-webcodecs-polyfill
 - **Relevance**: Pure JavaScript polyfill using ffmpeg.wasm
 - **Language**: JavaScript/TypeScript
 - **Notes**: Could be used as fallback or reference implementation
