@@ -3,6 +3,10 @@
 This document outlines the research tasks needed to implement WebCodecs in Node.js.
 
 > **Parent document**: [WebCodecs Overview](./webcodecs-overview.md)
+> 
+> **Detailed research**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) — Deep-dive into architecture, threading, memory management, and FFmpeg integration for Linux.
+> 
+> **Implementation tasks**: [tasks/](../tasks/) — Extracted actionable tasks with YAML frontmatter for tracking.
 
 ---
 

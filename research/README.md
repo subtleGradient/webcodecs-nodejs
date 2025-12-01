@@ -20,6 +20,10 @@ Each runtime has unique characteristics and optimal implementation paths:
 
 - **[bun-implementation.md](./bun-implementation.md)** - Follow-up research tasks for Bun implementation leveraging WebKit's existing WebCodecs work.
 
+### Deep-Dive Research
+
+- **[nodejs-linux-napi-ffmpeg.md](./nodejs-linux-napi-ffmpeg.md)** - Detailed technical research for implementing WebCodecs in Node.js on Linux using N-API and FFmpeg. Covers architecture, threading, memory management, codec mapping, and distribution.
+
 ## Quick Summary
 
 | Runtime | Approach | Key Advantage | Primary Challenge |
@@ -27,6 +31,12 @@ Each runtime has unique characteristics and optimal implementation paths:
 | **Node.js** | N-API + FFmpeg | Mature addon ecosystem | Threading/memory complexity |
 | **Deno** | Rust + codec libs | Type-safe, clean architecture | Codec library availability |
 | **Bun** | WebKit leverage | WebCodecs may already exist | Media backend wiring |
+
+## Implementation Tasks
+
+For detailed implementation tasks extracted from research:
+
+- [tasks/](../tasks/) — Individual implementation tasks with YAML frontmatter for tracking
 
 ## Recommended Reading Order
 

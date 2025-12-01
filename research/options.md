@@ -2,6 +2,8 @@
 
 This document explores various approaches to implementing the WebCodecs API in Node.js, based on research of existing implementations and related projects.
 
+> **See also**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) for detailed architecture and implementation guidance for the FFmpeg approach on Linux.
+
 ## Overview
 
 The WebCodecs API provides low-level access to media encoders and decoders. Implementing it in Node.js requires bridging JavaScript to native codec libraries.
@@ -11,6 +13,8 @@ The WebCodecs API provides low-level access to media encoders and decoders. Impl
 ### Option 1: FFmpeg via N-API
 
 **Description**: Create Node.js native bindings to FFmpeg's libavcodec, libavformat, and related libraries.
+
+> 📖 **Detailed research available**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) covers architecture, threading, memory management, codec mapping, licensing, and distribution for this approach.
 
 **Approach**:
 1. Use Node.js N-API to create native bindings
