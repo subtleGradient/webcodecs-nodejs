@@ -5,6 +5,8 @@ This document outlines the research tasks needed to implement WebCodecs in Node.
 > **Parent document**: [WebCodecs Overview](./webcodecs-overview.md)
 > 
 > **Detailed research**: [Node.js Linux N-API + FFmpeg Research](./nodejs-linux-napi-ffmpeg.md) — Deep-dive into architecture, threading, memory management, and FFmpeg integration for Linux.
+>
+> ⭐ **NEW — Faster path**: [FFmpeg N-API Bindings Research](./ffmpeg-napi.md) — Existing production-ready FFmpeg N-API bindings that can serve as the backend, avoiding raw N-API development.
 > 
 > **Implementation tasks**: [tasks/](../tasks/) — Extracted actionable tasks with YAML frontmatter for tracking.
 
@@ -13,6 +15,15 @@ This document outlines the research tasks needed to implement WebCodecs in Node.
 ## Overview
 
 Node.js has the most mature ecosystem for native addons and the strongest community demand (evidenced by the $10k challenge). The implementation will likely involve C++ bindings via N-API with FFmpeg or OS-level codec APIs.
+
+### ⭐ New Finding: Existing N-API Bindings Available
+
+Recent research discovered that production-ready FFmpeg N-API bindings already exist (see [FFmpeg N-API Bindings Research](./ffmpeg-napi.md)):
+
+- **node-av**: Full-featured FFmpeg bindings with prebuilts and HW acceleration
+- **@mmomtchev/ffmpeg**: Streams-based FFmpeg API
+
+This means we can **skip raw N-API development** and instead build a WebCodecs-compliant adapter layer on top of these existing libraries. See [Evaluate FFmpeg N-API Bindings](../tasks/evaluate-ffmpeg-napi-bindings.md) and [VideoDecoder Shim on node-av](../tasks/videodecoder-shim-node-av.md) for actionable tasks.
 
 ---
 

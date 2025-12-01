@@ -2,6 +2,8 @@
 
 > **Parent document**: [WebCodecs Overview](./webcodecs-overview.md)  
 > **Related**: [Node.js Implementation Tasks](./nodejs-implementation.md) | [Implementation Options](./options.md)
+>
+> ⚠️ **Important Update**: See [FFmpeg N-API Bindings Research](./ffmpeg-napi.md) for an **alternative faster path** using existing production-ready FFmpeg N-API bindings (node-av, @mmomtchev/ffmpeg). This document describes the from-scratch approach, which may still be useful if the existing bindings have gaps, but the shim-based approach is now recommended.
 
 **Scope**
 
