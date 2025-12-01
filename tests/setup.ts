@@ -59,3 +59,16 @@ await LibAVWebCodecs.load({
     noworker: true  // Run synchronously in Node.js
   }
 });
+
+// Polyfill ImageDecoder for Node.js (not included in libavjs-webcodecs-polyfill)
+if (typeof globalThis.ImageDecoder === 'undefined') {
+  class ImageDecoder {
+    static async isTypeSupported(type: string): Promise<boolean> {
+      // Support common image types
+      const supportedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+      return supportedTypes.includes(type.toLowerCase());
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ImageDecoder = ImageDecoder;
+}
