@@ -1,17 +1,22 @@
 {
   "name": "webcodecs-nodejs",
   "version": "1.0.0",
-  "description": "WebCodecs API implementation for Node.js",
+  "description": "WebCodecs API implementation for Node.js using N-API + FFmpeg",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "gypfile": true,
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "vitest run -c vitest.browser.config.ts",
     "test:node": "vitest run",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "build:native": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "clean:native": "node-gyp clean",
+    "typecheck": "tsc --noEmit",
+    "generate:fixtures": "npx tsx fixtures/generate.ts"
   },
   "keywords": [
     "webcodecs",
@@ -19,7 +24,9 @@
     "audio",
     "encoder",
     "decoder",
-    "media"
+    "media",
+    "ffmpeg",
+    "napi"
   ],
   "author": "",
   "license": "MIT",
@@ -28,12 +35,14 @@
     "@vitest/browser": "^4.0.14",
     "@vitest/browser-playwright": "^4.0.14",
     "@vitest/coverage-v8": "^4.0.14",
+    "node-addon-api": "^8.3.1",
+    "node-gyp": "^11.2.0",
     "playwright": "^1.57.0",
+    "tsx": "^4.19.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   },
   "dependencies": {
-    "@libav.js/types": "^6.7.7",
-    "@libav.js/variant-webm-vp9": "^6.7.7"
+    "bindings": "^1.5.0"
   }
 }

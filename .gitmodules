@@ -1,3 +1,27 @@
 [submodule "libs/libavjs-webcodecs-polyfill"]
 	path = libs/libavjs-webcodecs-polyfill
 	url = https://github.com/ennuicastr/libavjs-webcodecs-polyfill.git
+[submodule ".refs/FFmpeg"]
+	path = .refs/FFmpeg
+	url = https://github.com/FFmpeg/FFmpeg.git
+[submodule ".refs/bun"]
+	path = .refs/bun
+	url = https://github.com/oven-sh/bun.git
+[submodule ".refs/mediabunny"]
+	path = .refs/mediabunny
+	url = https://github.com/Vanilagy/mediabunny.git
+[submodule ".refs/remotion"]
+	path = .refs/remotion
+	url = https://github.com/remotion-dev/remotion.git
+[submodule ".refs/libavjs-webcodecs-polyfill"]
+	path = .refs/libavjs-webcodecs-polyfill
+	url = https://github.com/ennuicastr/libavjs-webcodecs-polyfill.git
+[submodule ".refs/effect"]
+	path = .refs/effect
+	url = https://github.com/Effect-TS/effect.git
+[submodule ".refs/effect-smol"]
+	path = .refs/effect-smol
+	url = https://github.com/Effect-TS/effect-smol.git
+[submodule ".refs/effect-native"]
+	path = .refs/effect-native
+	url = https://github.com/effect-native/effect-native.git

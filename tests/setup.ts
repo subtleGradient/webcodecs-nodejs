@@ -1,14 +1,14 @@
 /**
  * Vitest setup file for Node.js environment
  * 
- * This file is loaded before tests run to set up the WebCodecs polyfill
- * in the Node.js environment using libavjs-webcodecs-polyfill.
+ * This file sets up the WebCodecs API for testing.
+ * We use our own N-API + FFmpeg native implementation.
  */
 
-import * as LibAVWebCodecs from '../libs/libavjs-webcodecs-polyfill/dist/libavjs-webcodecs-polyfill.mjs';
-import LibAV from '@libav.js/variant-webm-vp9';
+// Import our polyfill implementation to make WebCodecs globally available
+import '../src/index.js';
 
-// Polyfill DOMRect for Node.js (required by VideoFrame in libavjs-webcodecs-polyfill)
+// Polyfill DOMRect for Node.js (required by some WebCodecs implementations)
 if (typeof globalThis.DOMRect === 'undefined') {
   class DOMRect {
     x: number;
@@ -49,26 +49,4 @@ if (typeof globalThis.DOMRect === 'undefined') {
     }
   }
   (globalThis as unknown as Record<string, unknown>).DOMRect = DOMRect;
-}
-
-// Load the polyfill before tests run
-await LibAVWebCodecs.load({
-  polyfill: true,
-  LibAV: LibAV as unknown as import('@libav.js/types').LibAVWrapper,
-  libavOptions: {
-    noworker: true  // Run synchronously in Node.js
-  }
-});
-
-// Polyfill ImageDecoder for Node.js (not included in libavjs-webcodecs-polyfill)
-if (typeof globalThis.ImageDecoder === 'undefined') {
-  class ImageDecoder {
-    static async isTypeSupported(type: string): Promise<boolean> {
-      // Support common image types
-      const supportedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
-      return supportedTypes.includes(type.toLowerCase());
-    }
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).ImageDecoder = ImageDecoder;
 }

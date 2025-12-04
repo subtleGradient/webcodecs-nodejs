@@ -1,0 +1,72 @@
+{
+  "vp8-red-64x64": {
+    "codec": "vp8",
+    "width": 64,
+    "height": 64,
+    "color": {
+      "r": 255,
+      "g": 0,
+      "b": 0,
+      "hex": "FF0000"
+    },
+    "tolerance": 8,
+    "file": "vp8/vp8-red-64x64.ivf",
+    "rawFrameFile": "vp8/vp8-red-64x64.rgb24"
+  },
+  "vp8-secret1-64x64": {
+    "codec": "vp8",
+    "width": 64,
+    "height": 64,
+    "color": {
+      "r": 222,
+      "g": 173,
+      "b": 190,
+      "hex": "DEADBE"
+    },
+    "tolerance": 8,
+    "file": "vp8/vp8-secret1-64x64.ivf",
+    "rawFrameFile": "vp8/vp8-secret1-64x64.rgb24"
+  },
+  "vp8-secret2-128x128": {
+    "codec": "vp8",
+    "width": 128,
+    "height": 128,
+    "color": {
+      "r": 202,
+      "g": 254,
+      "b": 66,
+      "hex": "CAFE42"
+    },
+    "tolerance": 8,
+    "file": "vp8/vp8-secret2-128x128.ivf",
+    "rawFrameFile": "vp8/vp8-secret2-128x128.rgb24"
+  },
+  "vp9-red-64x64": {
+    "codec": "vp9",
+    "width": 64,
+    "height": 64,
+    "color": {
+      "r": 255,
+      "g": 0,
+      "b": 0,
+      "hex": "FF0000"
+    },
+    "tolerance": 8,
+    "file": "vp9/vp9-red-64x64.ivf",
+    "rawFrameFile": "vp9/vp9-red-64x64.rgb24"
+  },
+  "vp9-secret1-64x64": {
+    "codec": "vp9",
+    "width": 64,
+    "height": 64,
+    "color": {
+      "r": 222,
+      "g": 173,
+      "b": 190,
+      "hex": "DEADBE"
+    },
+    "tolerance": 8,
+    "file": "vp9/vp9-secret1-64x64.ivf",
+    "rawFrameFile": "vp9/vp9-secret1-64x64.rgb24"
+  }
+}

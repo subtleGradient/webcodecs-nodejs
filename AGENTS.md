@@ -1,0 +1,178 @@
+# AGENTS.md
+
+## Project Goal
+
+Implement the WebCodecs API for Node.js using N-API + FFmpeg native bindings (Linux first).
+This is for the $10k WebCodecs Node.js Challenge.
+
+## Development Methodology: Kent Beck-Style RGR TDD
+
+We follow strict Red-Green-Refactor Test-Driven Development:
+
+1. **RED**: Write a failing test first. The test defines the requirement.
+2. **GREEN**: Write the minimum code to make the test pass. No more.
+3. **REFACTOR**: Clean up without changing behavior. Tests must stay green.
+4. **COMMIT & PUSH**: After each RGR cycle when tests pass, commit and push.
+
+### Git Workflow
+
+After completing each RED→GREEN→REFACTOR cycle:
+1. Run `npm test` to verify all tests pass
+2. `git add -A` to stage changes
+3. `git commit -m "feat: <description of what was added>"` 
+4. `git push` to push to remote
+
+Commit message format:
+- `feat:` - New feature or capability
+- `fix:` - Bug fix
+- `refactor:` - Code cleanup without behavior change
+- `test:` - Test-only changes
+- `docs:` - Documentation changes
+- `chore:` - Build/tooling changes
+
+### Scientific Verification Principle
+
+We use "secret color" tests to prove real work is happening:
+- Encode a frame with a specific RGB color (e.g., `#DEADBE`)
+- Decode it back and verify the color matches (within compression tolerance)
+- If the color is wrong, the codec is broken. No false positives.
+
+### Task Priority Order
+
+1. **Critical Path**: Test fixtures → Build infra → VideoDecoder → VideoEncoder
+2. **Validation**: Round-trip tests with secret color verification
+3. **Expansion**: Add codecs (H.264, VP9, audio)
+
+## Commands
+
+### Build & Test
+- `npm test` - run all tests
+- `npm run test:watch` - run tests in watch mode
+- `npx vitest run tests/webcodecs.test.ts` - run a single test file
+- `npx vitest run -t "VideoEncoder"` - run tests matching pattern
+- `npm run build` - build TypeScript to dist/
+- `npm run typecheck` - type-check without emitting
+
+### Native Addon
+- `npm run build:native` - compile N-API addon with node-gyp
+- `npm run rebuild` - clean rebuild of native addon
+
+### Test Fixtures
+- `npm run generate:fixtures` - generate encoded test data with secret colors
+
+## Code Style
+
+### TypeScript
+- Strict mode enabled, ES2022 target, ESM modules
+- Use ES module imports (`import x from 'y'`), no CommonJS
+- Prefer explicit types for public APIs; use `interface` for object shapes
+- PascalCase for classes/interfaces, camelCase for functions/variables, UPPER_CASE for constants
+- Use `_` prefix for private class members (e.g., `_state`)
+- Throw `DOMException` with appropriate error names (e.g., `InvalidStateError`)
+
+### C++ (Native Addon)
+- Use `node-addon-api` (C++ wrapper for N-API)
+- Class names: `Native{ClassName}` (e.g., `NativeVideoDecoder`)
+- One class per file in `src/native/`
+- Use RAII for resource management
+- All FFmpeg calls wrapped with error checking
+- Thread-safe function (TSFN) for callbacks to JS
+
+### Tests
+- Use vitest with `describe`/`it`/`expect`
+- Import from `vitest`
+- Cleanup in `afterEach`
+- Each test should be independent
+- Use descriptive test names that explain the requirement
+- **Implementation-agnostic**: Tests must work with ANY spec-compliant WebCodecs implementation (browser, Node.js, Deno, Bun). Do not test implementation details—test the WebCodecs API contract.
+- Use QR codes for verification (survive lossy compression with error correction). See `research/lossless-verification.md`.
+
+## Project Structure
+
+```
+src/
+  index.ts              # Main exports, JS API layer
+  codec-parser.ts       # Codec string parser (avc1.* → FFmpeg params)
+  native/
+    binding.gyp         # Build configuration
+    addon.cc            # N-API module entry point
+    video_decoder.cc    # NativeVideoDecoder implementation
+    video_decoder.h
+    video_encoder.cc    # NativeVideoEncoder implementation
+    video_encoder.h
+    video_frame.cc      # NativeVideoFrame (wraps AVFrame*)
+    video_frame.h
+    command_queue.cc    # Thread-safe command queue
+    command_queue.h
+    worker_thread.cc    # Per-instance worker thread
+    worker_thread.h
+
+tests/
+  setup.ts              # Test setup with polyfill loading
+  webcodecs.test.ts     # API conformance tests
+  codec-parser.test.ts  # Codec string parser tests
+  native-decode.test.ts # Native decoder integration tests
+  native-encode.test.ts # Native encoder integration tests
+  round-trip.test.ts    # Encode→Decode verification with secret colors
+
+fixtures/
+  generate.ts           # Script to generate test fixtures
+  vp8/
+    keyframe-red.bin    # VP8 keyframe with known color
+    keyframe-secret.bin # VP8 keyframe with secret color for verification
+  h264/
+    ...
+
+research/              # Research documentation
+tasks/                 # Implementation task tracking
+
+.refs/                 # Git submodules with reference implementations
+  bun/                 # Bun runtime source (N-API examples, JavaScriptCore)
+  effect/              # Effect-TS ecosystem
+  effect-native/       # Effect native bindings patterns
+  effect-smol/         # Lightweight Effect patterns
+  FFmpeg/              # FFmpeg source code reference
+  libavjs-webcodecs-polyfill/  # WebCodecs polyfill using libav.js
+  mediabunny/          # Media processing library
+  remotion/            # Remotion video framework (WebCodecs usage examples)
+```
+
+## FFmpeg Integration
+
+### Required Libraries
+- `libavcodec` - codec implementations
+- `libavformat` - container formats (for test fixture generation)
+- `libavutil` - utilities, pixel formats
+- `libswscale` - pixel format conversion (for copyTo)
+
+### Codec Priority
+1. VP8 (libvpx) - simplest, royalty-free, good for initial development
+2. H.264 (libx264/libopenh264) - most common
+3. VP9 (libvpx-vp9) - modern royalty-free
+4. AV1 (libaom/libdav1d) - future-proof
+
+### Linking Strategy
+- Static linking for distribution (self-contained binary)
+- Dynamic linking for development (faster iteration)
+
+## Current Sprint Tasks
+
+See the todo list in the conversation for current task status.
+
+### Phase 1: Foundation (Current)
+- [ ] Test fixtures with secret color verification
+- [ ] N-API build infrastructure
+- [ ] Codec string parser
+- [ ] Basic NativeVideoDecoder (VP8)
+
+### Phase 2: Core Functionality
+- [ ] NativeVideoEncoder (VP8)
+- [ ] VideoFrame with copyTo()
+- [ ] Threading model
+- [ ] Round-trip tests
+
+### Phase 3: Expansion
+- [ ] H.264 support
+- [ ] VP9 support
+- [ ] Audio codecs
+- [ ] Hardware acceleration detection
