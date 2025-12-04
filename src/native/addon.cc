@@ -123,6 +123,164 @@ Napi::Value ListCodecs(const Napi::CallbackInfo& info) {
 }
 
 /**
+ * Encode an RGB24 frame to VP8.
+ * 
+ * encodeVP8Frame(rgbData: Buffer, options: { width, height, bitrate }) 
+ *   => { data: Buffer, isKeyframe: boolean }
+ */
+Napi::Value EncodeVP8Frame(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  
+  // Validate arguments
+  if (info.Length() < 2 || !info[0].IsBuffer() || !info[1].IsObject()) {
+    Napi::TypeError::New(env, "Expected (Buffer, {width, height, bitrate})").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  Napi::Buffer<uint8_t> inputBuffer = info[0].As<Napi::Buffer<uint8_t>>();
+  Napi::Object options = info[1].As<Napi::Object>();
+  
+  int width = options.Get("width").As<Napi::Number>().Int32Value();
+  int height = options.Get("height").As<Napi::Number>().Int32Value();
+  int bitrate = options.Has("bitrate") ? 
+    options.Get("bitrate").As<Napi::Number>().Int32Value() : 500000;
+  
+  uint8_t* rgbData = inputBuffer.Data();
+  size_t expectedSize = static_cast<size_t>(width * height * 3);
+  
+  if (inputBuffer.Length() != expectedSize) {
+    Napi::TypeError::New(env, "RGB24 buffer size mismatch").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Find VP8 encoder (libvpx)
+  const AVCodec* codec = avcodec_find_encoder_by_name("libvpx");
+  if (!codec) {
+    // Fallback to codec ID
+    codec = avcodec_find_encoder(AV_CODEC_ID_VP8);
+  }
+  if (!codec) {
+    Napi::Error::New(env, "VP8 encoder (libvpx) not found").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Allocate codec context
+  AVCodecContext* ctx = avcodec_alloc_context3(codec);
+  if (!ctx) {
+    Napi::Error::New(env, "Failed to allocate encoder context").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Configure encoder
+  ctx->bit_rate = bitrate;
+  ctx->width = width;
+  ctx->height = height;
+  ctx->time_base = {1, 30};
+  ctx->framerate = {30, 1};
+  ctx->gop_size = 30;
+  ctx->max_b_frames = 0;
+  ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+  
+  // Open encoder
+  if (avcodec_open2(ctx, codec, nullptr) < 0) {
+    avcodec_free_context(&ctx);
+    Napi::Error::New(env, "Failed to open VP8 encoder").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Allocate frame for YUV420P
+  AVFrame* frame = av_frame_alloc();
+  frame->format = ctx->pix_fmt;
+  frame->width = width;
+  frame->height = height;
+  
+  if (av_frame_get_buffer(frame, 0) < 0) {
+    av_frame_free(&frame);
+    avcodec_free_context(&ctx);
+    Napi::Error::New(env, "Failed to allocate frame buffer").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Make frame writable
+  av_frame_make_writable(frame);
+  
+  // Convert RGB24 to YUV420P
+  SwsContext* swsCtx = sws_getContext(
+    width, height, AV_PIX_FMT_RGB24,
+    width, height, AV_PIX_FMT_YUV420P,
+    SWS_BILINEAR, nullptr, nullptr, nullptr
+  );
+  
+  if (!swsCtx) {
+    av_frame_free(&frame);
+    avcodec_free_context(&ctx);
+    Napi::Error::New(env, "Failed to create swscale context").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  uint8_t* srcSlice[1] = { rgbData };
+  int srcStride[1] = { width * 3 };
+  
+  sws_scale(swsCtx, srcSlice, srcStride, 0, height, frame->data, frame->linesize);
+  
+  // Set PTS (first frame)
+  frame->pts = 0;
+  frame->pict_type = AV_PICTURE_TYPE_I;  // Force keyframe for single-frame encode
+  
+  // Allocate packet
+  AVPacket* pkt = av_packet_alloc();
+  
+  // Send frame to encoder
+  int ret = avcodec_send_frame(ctx, frame);
+  if (ret < 0) {
+    char errbuf[256];
+    av_strerror(ret, errbuf, sizeof(errbuf));
+    av_packet_free(&pkt);
+    sws_freeContext(swsCtx);
+    av_frame_free(&frame);
+    avcodec_free_context(&ctx);
+    Napi::Error::New(env, std::string("Failed to send frame: ") + errbuf).ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Flush encoder (send NULL to get all pending frames)
+  avcodec_send_frame(ctx, nullptr);
+  
+  // Receive encoded packet
+  ret = avcodec_receive_packet(ctx, pkt);
+  if (ret < 0) {
+    char errbuf[256];
+    av_strerror(ret, errbuf, sizeof(errbuf));
+    av_packet_free(&pkt);
+    sws_freeContext(swsCtx);
+    av_frame_free(&frame);
+    avcodec_free_context(&ctx);
+    Napi::Error::New(env, std::string("Failed to receive packet: ") + errbuf).ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  
+  // Copy encoded data to JS buffer
+  Napi::Buffer<uint8_t> outputBuffer = Napi::Buffer<uint8_t>::Copy(env, pkt->data, pkt->size);
+  
+  bool isKeyframe = (pkt->flags & AV_PKT_FLAG_KEY) != 0;
+  
+  // Build result
+  Napi::Object result = Napi::Object::New(env);
+  result.Set("data", outputBuffer);
+  result.Set("isKeyframe", Napi::Boolean::New(env, isKeyframe));
+  result.Set("size", Napi::Number::New(env, pkt->size));
+  
+  // Cleanup
+  av_packet_unref(pkt);
+  av_packet_free(&pkt);
+  sws_freeContext(swsCtx);
+  av_frame_free(&frame);
+  avcodec_free_context(&ctx);
+  
+  return result;
+}
+
+/**
  * Decode a VP8 frame from raw IVF frame data.
  * This is a synchronous decode for testing purposes.
  * 
@@ -252,6 +410,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("getFFmpegVersion", Napi::Function::New(env, GetFFmpegVersion));
   exports.Set("hasCodec", Napi::Function::New(env, HasCodec));
   exports.Set("listCodecs", Napi::Function::New(env, ListCodecs));
+  exports.Set("encodeVP8Frame", Napi::Function::New(env, EncodeVP8Frame));
   exports.Set("decodeVP8Frame", Napi::Function::New(env, DecodeVP8Frame));
   
   return exports;
