@@ -96,16 +96,26 @@ const SUPPORTED_VIDEO_CODECS = ['vp8', 'vp09', 'avc1'];
 const SUPPORTED_AUDIO_CODECS = ['opus', 'mp4a'];
 
 // Try to load native addon
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
 let nativeAddon: {
   encodeVP8Frame: (data: Buffer, options: { width: number; height: number; bitrate: number; format?: string }) => { data: Buffer; isKeyframe: boolean };
   decodeVP8Frame: (data: Buffer) => { width: number; height: number; data: Buffer; firstPixelR: number; firstPixelG: number; firstPixelB: number };
+  getFFmpegVersion: () => string;
 } | null = null;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  nativeAddon = require('../build/Release/webcodecs_native.node');
-} catch {
-  // Native addon not available
+  // Use createRequire to load native addon with correct path resolution
+  const require = createRequire(import.meta.url);
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const addonPath = join(__dirname, '..', 'build', 'Release', 'webcodecs_native.node');
+  nativeAddon = require(addonPath);
+} catch (e) {
+  // Native addon not available - running in browser or addon not built
+  // console.warn('Native addon not available:', e);
 }
 
 function isCodecSupported(codec: string, supportedPrefixes: string[]): boolean {

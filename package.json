@@ -1,11 +1,22 @@
 {
   "name": "webcodecs-nodejs",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "WebCodecs API implementation for Node.js using N-API + FFmpeg",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "gypfile": true,
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "src/native/",
+    "binding.gyp"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,7 +27,9 @@
     "rebuild": "node-gyp rebuild",
     "clean:native": "node-gyp clean",
     "typecheck": "tsc --noEmit",
-    "generate:fixtures": "npx tsx fixtures/generate.ts"
+    "generate:fixtures": "npx tsx fixtures/generate.ts",
+    "demo": "npx tsx demo.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "webcodecs",
@@ -26,10 +39,29 @@
     "decoder",
     "media",
     "ffmpeg",
-    "napi"
+    "napi",
+    "vp8",
+    "vp9",
+    "h264",
+    "codec"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/subtleGradient/webcodecs-nodejs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/subtleGradient/webcodecs-nodejs/issues"
+  },
+  "homepage": "https://github.com/subtleGradient/webcodecs-nodejs#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@types/qrcode": "^1.5.6",
