@@ -123,10 +123,12 @@ Napi::Value ListCodecs(const Napi::CallbackInfo& info) {
 }
 
 /**
- * Encode an RGB24 frame to VP8.
+ * Encode a frame to VP8.
  * 
- * encodeVP8Frame(rgbData: Buffer, options: { width, height, bitrate }) 
+ * encodeVP8Frame(data: Buffer, options: { width, height, bitrate, format? }) 
  *   => { data: Buffer, isKeyframe: boolean }
+ * 
+ * format can be 'RGB24' (default) or 'I420'
  */
 Napi::Value EncodeVP8Frame(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
@@ -145,11 +147,21 @@ Napi::Value EncodeVP8Frame(const Napi::CallbackInfo& info) {
   int bitrate = options.Has("bitrate") ? 
     options.Get("bitrate").As<Napi::Number>().Int32Value() : 500000;
   
-  uint8_t* rgbData = inputBuffer.Data();
-  size_t expectedSize = static_cast<size_t>(width * height * 3);
+  // Check format (default to RGB24 for backward compatibility)
+  std::string format = "RGB24";
+  if (options.Has("format") && options.Get("format").IsString()) {
+    format = options.Get("format").As<Napi::String>().Utf8Value();
+  }
+  
+  bool isI420 = (format == "I420" || format == "YUV420P");
+  
+  uint8_t* inputData = inputBuffer.Data();
+  size_t expectedSize = isI420 
+    ? static_cast<size_t>(width * height + (width / 2) * (height / 2) * 2)  // I420
+    : static_cast<size_t>(width * height * 3);  // RGB24
   
   if (inputBuffer.Length() != expectedSize) {
-    Napi::TypeError::New(env, "RGB24 buffer size mismatch").ThrowAsJavaScriptException();
+    Napi::TypeError::New(env, isI420 ? "I420 buffer size mismatch" : "RGB24 buffer size mismatch").ThrowAsJavaScriptException();
     return env.Undefined();
   }
   
@@ -204,24 +216,46 @@ Napi::Value EncodeVP8Frame(const Napi::CallbackInfo& info) {
   // Make frame writable
   av_frame_make_writable(frame);
   
-  // Convert RGB24 to YUV420P
-  SwsContext* swsCtx = sws_getContext(
-    width, height, AV_PIX_FMT_RGB24,
-    width, height, AV_PIX_FMT_YUV420P,
-    SWS_BILINEAR, nullptr, nullptr, nullptr
-  );
+  SwsContext* swsCtx = nullptr;
   
-  if (!swsCtx) {
-    av_frame_free(&frame);
-    avcodec_free_context(&ctx);
-    Napi::Error::New(env, "Failed to create swscale context").ThrowAsJavaScriptException();
-    return env.Undefined();
+  if (isI420) {
+    // Input is already I420/YUV420P - copy directly to frame
+    int ySize = width * height;
+    int uvStride = width / 2;
+    int uvHeight = height / 2;
+    
+    // Copy Y plane
+    for (int y = 0; y < height; y++) {
+      memcpy(frame->data[0] + y * frame->linesize[0], inputData + y * width, width);
+    }
+    // Copy U plane
+    for (int y = 0; y < uvHeight; y++) {
+      memcpy(frame->data[1] + y * frame->linesize[1], inputData + ySize + y * uvStride, uvStride);
+    }
+    // Copy V plane
+    for (int y = 0; y < uvHeight; y++) {
+      memcpy(frame->data[2] + y * frame->linesize[2], inputData + ySize + uvStride * uvHeight + y * uvStride, uvStride);
+    }
+  } else {
+    // Convert RGB24 to YUV420P
+    swsCtx = sws_getContext(
+      width, height, AV_PIX_FMT_RGB24,
+      width, height, AV_PIX_FMT_YUV420P,
+      SWS_BILINEAR, nullptr, nullptr, nullptr
+    );
+    
+    if (!swsCtx) {
+      av_frame_free(&frame);
+      avcodec_free_context(&ctx);
+      Napi::Error::New(env, "Failed to create swscale context").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    
+    uint8_t* srcSlice[1] = { inputData };
+    int srcStride[1] = { width * 3 };
+    
+    sws_scale(swsCtx, srcSlice, srcStride, 0, height, frame->data, frame->linesize);
   }
-  
-  uint8_t* srcSlice[1] = { rgbData };
-  int srcStride[1] = { width * 3 };
-  
-  sws_scale(swsCtx, srcSlice, srcStride, 0, height, frame->data, frame->linesize);
   
   // Set PTS (first frame)
   frame->pts = 0;

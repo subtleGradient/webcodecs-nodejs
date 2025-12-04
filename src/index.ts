@@ -95,6 +95,19 @@ interface AudioDataInit {
 const SUPPORTED_VIDEO_CODECS = ['vp8', 'vp09', 'avc1'];
 const SUPPORTED_AUDIO_CODECS = ['opus', 'mp4a'];
 
+// Try to load native addon
+let nativeAddon: {
+  encodeVP8Frame: (data: Buffer, options: { width: number; height: number; bitrate: number; format?: string }) => { data: Buffer; isKeyframe: boolean };
+  decodeVP8Frame: (data: Buffer) => { width: number; height: number; data: Buffer; firstPixelR: number; firstPixelG: number; firstPixelB: number };
+} | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  nativeAddon = require('../build/Release/webcodecs_native.node');
+} catch {
+  // Native addon not available
+}
+
 function isCodecSupported(codec: string, supportedPrefixes: string[]): boolean {
   const codecLower = codec.toLowerCase();
   return supportedPrefixes.some(prefix => codecLower.startsWith(prefix));
@@ -108,6 +121,8 @@ export class VideoEncoder {
   private _encodeQueueSize: number = 0;
   private _output: (chunk: unknown, metadata?: unknown) => void;
   private _error: (error: Error) => void;
+  private _config: VideoEncoderConfig | null = null;
+  private _pendingEncodes: Array<{ frameData: Uint8Array; width: number; height: number; timestamp: number; duration: number | null; options?: { keyFrame?: boolean } }> = [];
 
   constructor(init: EncoderInit) {
     this._output = init.output;
@@ -136,19 +151,81 @@ export class VideoEncoder {
       this._state = 'closed';
       return;
     }
+    this._config = config;
     this._state = 'configured';
   }
 
-  encode(_frame: unknown, _options?: unknown): void {
+  encode(frame: VideoFrame, options?: { keyFrame?: boolean }): void {
     if (this._state !== 'configured') {
       throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
+    
+    // Copy frame data immediately (per WebCodecs spec)
+    const width = frame.codedWidth;
+    const height = frame.codedHeight;
+    const i420Size = frame.allocationSize({ format: 'I420' });
+    const frameData = new Uint8Array(i420Size);
+    frame.copyTo(frameData, { format: 'I420' });
+    
+    // Queue the encode with copied data
+    this._encodeQueueSize++;
+    this._pendingEncodes.push({ 
+      frameData, 
+      width, 
+      height, 
+      timestamp: frame.timestamp, 
+      duration: frame.duration, 
+      options 
+    });
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
       throw new WebCodecsDOMException('Encoder is not configured', 'InvalidStateError');
     }
+    
+    if (!nativeAddon) {
+      this._error(new Error('Native addon not available'));
+      return;
+    }
+    
+    // Process all pending encodes
+    for (const { frameData, width, height, timestamp, duration } of this._pendingEncodes) {
+      try {
+        // Encode using native addon - pass I420 directly
+        const result = nativeAddon.encodeVP8Frame(Buffer.from(frameData), {
+          width,
+          height,
+          bitrate: this._config?.bitrate ?? 500000,
+          format: 'I420',
+        });
+        
+        // Create EncodedVideoChunk from result
+        const chunk = new EncodedVideoChunk({
+          type: result.isKeyframe ? 'key' : 'delta',
+          timestamp: timestamp,
+          duration: duration ?? undefined,
+          data: new Uint8Array(result.data).buffer,
+        });
+        
+        // Call output callback with chunk and metadata
+        const metadata = {
+          decoderConfig: {
+            codec: this._config?.codec ?? 'vp8',
+            codedWidth: width,
+            codedHeight: height,
+          },
+        };
+        
+        this._output(chunk, metadata);
+      } catch (e) {
+        this._error(e as Error);
+      } finally {
+        this._encodeQueueSize--;
+      }
+    }
+    
+    this._pendingEncodes = [];
   }
 
   reset(): void {
@@ -157,11 +234,48 @@ export class VideoEncoder {
     }
     this._state = 'unconfigured';
     this._encodeQueueSize = 0;
+    this._pendingEncodes = [];
+    this._config = null;
   }
 
   close(): void {
     this._state = 'closed';
+    this._pendingEncodes = [];
   }
+}
+
+// Helper: Convert I420 (YUV420P) to RGB24
+function i420ToRgb24(i420: Uint8Array, width: number, height: number): Uint8Array {
+  const ySize = width * height;
+  const uvSize = (width / 2) * (height / 2);
+  const rgb = new Uint8Array(width * height * 3);
+  
+  for (let j = 0; j < height; j++) {
+    for (let i = 0; i < width; i++) {
+      const yIndex = j * width + i;
+      const uvIndex = Math.floor(j / 2) * (width / 2) + Math.floor(i / 2);
+      
+      const y = i420[yIndex];
+      const u = i420[ySize + uvIndex];
+      const v = i420[ySize + uvSize + uvIndex];
+      
+      // YUV to RGB conversion
+      const c = y - 16;
+      const d = u - 128;
+      const e = v - 128;
+      
+      const r = Math.max(0, Math.min(255, Math.round((298 * c + 409 * e + 128) >> 8)));
+      const g = Math.max(0, Math.min(255, Math.round((298 * c - 100 * d - 208 * e + 128) >> 8)));
+      const b = Math.max(0, Math.min(255, Math.round((298 * c + 516 * d + 128) >> 8)));
+      
+      const rgbIndex = (j * width + i) * 3;
+      rgb[rgbIndex] = r;
+      rgb[rgbIndex + 1] = g;
+      rgb[rgbIndex + 2] = b;
+    }
+  }
+  
+  return rgb;
 }
 
 /**
@@ -172,6 +286,8 @@ export class VideoDecoder {
   private _decodeQueueSize: number = 0;
   private _output: (frame: unknown) => void;
   private _error: (error: Error) => void;
+  private _config: VideoDecoderConfig | null = null;
+  private _pendingDecodes: EncodedVideoChunk[] = [];
 
   constructor(init: DecoderInit) {
     this._output = init.output;
@@ -200,19 +316,62 @@ export class VideoDecoder {
       this._state = 'closed';
       return;
     }
+    this._config = config;
     this._state = 'configured';
   }
 
-  decode(_chunk: unknown): void {
+  decode(chunk: EncodedVideoChunk): void {
     if (this._state !== 'configured') {
       throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
+    
+    // Queue the decode
+    this._decodeQueueSize++;
+    this._pendingDecodes.push(chunk);
   }
 
   async flush(): Promise<void> {
     if (this._state !== 'configured') {
       throw new WebCodecsDOMException('Decoder is not configured', 'InvalidStateError');
     }
+    
+    if (!nativeAddon) {
+      this._error(new Error('Native addon not available'));
+      return;
+    }
+    
+    // Process all pending decodes
+    for (const chunk of this._pendingDecodes) {
+      try {
+        // Get encoded data from chunk
+        const encodedBuffer = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(encodedBuffer);
+        
+        // Decode using native addon
+        const result = nativeAddon.decodeVP8Frame(Buffer.from(encodedBuffer));
+        
+        // Convert RGB24 result to I420 for VideoFrame
+        const rgb24 = new Uint8Array(result.data);
+        const i420 = rgb24ToI420(rgb24, result.width, result.height);
+        
+        // Create VideoFrame from decoded data
+        const frame = new VideoFrame(i420.buffer as ArrayBuffer, {
+          format: 'I420',
+          codedWidth: result.width,
+          codedHeight: result.height,
+          timestamp: chunk.timestamp,
+          duration: chunk.duration ?? undefined,
+        });
+        
+        this._output(frame);
+      } catch (e) {
+        this._error(e as Error);
+      } finally {
+        this._decodeQueueSize--;
+      }
+    }
+    
+    this._pendingDecodes = [];
   }
 
   reset(): void {
@@ -221,11 +380,48 @@ export class VideoDecoder {
     }
     this._state = 'unconfigured';
     this._decodeQueueSize = 0;
+    this._pendingDecodes = [];
+    this._config = null;
   }
 
   close(): void {
     this._state = 'closed';
+    this._pendingDecodes = [];
   }
+}
+
+// Helper: Convert RGB24 to I420 (YUV420P)
+function rgb24ToI420(rgb: Uint8Array, width: number, height: number): Uint8Array {
+  const ySize = width * height;
+  const uvSize = (width / 2) * (height / 2);
+  const i420 = new Uint8Array(ySize + uvSize * 2);
+  
+  for (let j = 0; j < height; j++) {
+    for (let i = 0; i < width; i++) {
+      const rgbIndex = (j * width + i) * 3;
+      const r = rgb[rgbIndex];
+      const g = rgb[rgbIndex + 1];
+      const b = rgb[rgbIndex + 2];
+      
+      // RGB to YUV conversion
+      const y = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+      
+      const yIndex = j * width + i;
+      i420[yIndex] = Math.max(0, Math.min(255, y));
+      
+      // U and V are subsampled 2x2
+      if (j % 2 === 0 && i % 2 === 0) {
+        const u = Math.round(-0.169 * r - 0.331 * g + 0.5 * b + 128);
+        const v = Math.round(0.5 * r - 0.419 * g - 0.081 * b + 128);
+        
+        const uvIndex = (j / 2) * (width / 2) + (i / 2);
+        i420[ySize + uvIndex] = Math.max(0, Math.min(255, u));
+        i420[ySize + uvSize + uvIndex] = Math.max(0, Math.min(255, v));
+      }
+    }
+  }
+  
+  return i420;
 }
 
 /**
@@ -356,6 +552,24 @@ export class AudioDecoder {
   }
 }
 
+interface VideoFrameInit {
+  format?: string;
+  codedWidth?: number;
+  codedHeight?: number;
+  timestamp?: number;
+  duration?: number;
+  displayWidth?: number;
+  displayHeight?: number;
+}
+
+interface VideoFrameBufferInit {
+  format: string;
+  codedWidth: number;
+  codedHeight: number;
+  timestamp: number;
+  duration?: number;
+}
+
 /**
  * VideoFrame polyfill for Node.js
  */
@@ -364,15 +578,46 @@ export class VideoFrame {
   private _duration: number | null;
   private _codedWidth: number;
   private _codedHeight: number;
+  private _displayWidth: number;
+  private _displayHeight: number;
   private _format: string | null;
+  private _data: ArrayBuffer | null;
   private _closed: boolean = false;
 
-  constructor(_source: unknown, options?: { timestamp?: number; duration?: number }) {
+  constructor(source: BufferSource | null, options?: VideoFrameInit | VideoFrameBufferInit) {
     this._timestamp = options?.timestamp ?? 0;
     this._duration = options?.duration ?? null;
-    this._codedWidth = 0;
-    this._codedHeight = 0;
-    this._format = null;
+    
+    // Handle buffer source with VideoFrameBufferInit
+    if (source && 'format' in (options || {})) {
+      const init = options as VideoFrameBufferInit;
+      this._format = init.format;
+      this._codedWidth = init.codedWidth;
+      this._codedHeight = init.codedHeight;
+      this._displayWidth = init.codedWidth;
+      this._displayHeight = init.codedHeight;
+      
+      // Copy the data
+      if (source instanceof ArrayBuffer) {
+        this._data = source.slice(0);
+      } else if (ArrayBuffer.isView(source)) {
+        const view = source as ArrayBufferView;
+        const newBuffer = new ArrayBuffer(view.byteLength);
+        new Uint8Array(newBuffer).set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+        this._data = newBuffer;
+      } else {
+        this._data = null;
+      }
+    } else {
+      // Legacy path or null source
+      const init = options as VideoFrameInit | undefined;
+      this._codedWidth = init?.codedWidth ?? 0;
+      this._codedHeight = init?.codedHeight ?? 0;
+      this._displayWidth = init?.displayWidth ?? this._codedWidth;
+      this._displayHeight = init?.displayHeight ?? this._codedHeight;
+      this._format = init?.format ?? null;
+      this._data = null;
+    }
   }
 
   get timestamp(): number {
@@ -391,16 +636,88 @@ export class VideoFrame {
     return this._codedHeight;
   }
 
+  get displayWidth(): number {
+    return this._displayWidth;
+  }
+
+  get displayHeight(): number {
+    return this._displayHeight;
+  }
+
   get format(): string | null {
     return this._format;
   }
 
+  get visibleRect(): { x: number; y: number; width: number; height: number } {
+    return { x: 0, y: 0, width: this._codedWidth, height: this._codedHeight };
+  }
+
+  allocationSize(options?: { format?: string }): number {
+    const format = options?.format ?? this._format;
+    const width = this._codedWidth;
+    const height = this._codedHeight;
+    
+    switch (format) {
+      case 'I420':
+      case 'YUV420P':
+        // Y plane + U plane (1/4) + V plane (1/4) = 1.5 * width * height
+        return width * height + (width / 2) * (height / 2) * 2;
+      case 'RGB':
+      case 'RGB24':
+        return width * height * 3;
+      case 'RGBA':
+        return width * height * 4;
+      default:
+        // Default to I420 if format is unknown
+        return width * height + (width / 2) * (height / 2) * 2;
+    }
+  }
+
+  copyTo(destination: BufferSource, options?: { format?: string }): void {
+    if (this._closed) {
+      throw new WebCodecsDOMException('VideoFrame is closed', 'InvalidStateError');
+    }
+    
+    const destView = destination instanceof ArrayBuffer 
+      ? new Uint8Array(destination) 
+      : new Uint8Array((destination as ArrayBufferView).buffer, (destination as ArrayBufferView).byteOffset, (destination as ArrayBufferView).byteLength);
+    
+    const requestedFormat = options?.format ?? this._format;
+    
+    if (!this._data) return;
+    
+    const srcView = new Uint8Array(this._data);
+    
+    // If same format, just copy
+    if (requestedFormat === this._format) {
+      destView.set(srcView.subarray(0, Math.min(srcView.length, destView.length)));
+    } else if (this._format === 'I420' && (requestedFormat === 'RGB' || requestedFormat === 'RGB24')) {
+      // Convert I420 to RGB24
+      const rgb = i420ToRgb24(srcView, this._codedWidth, this._codedHeight);
+      destView.set(rgb.subarray(0, Math.min(rgb.length, destView.length)));
+    } else {
+      // Fallback: just copy raw data
+      destView.set(srcView.subarray(0, Math.min(srcView.length, destView.length)));
+    }
+  }
+
   close(): void {
     this._closed = true;
+    this._data = null;
   }
 
   clone(): VideoFrame {
-    return new VideoFrame(null, { timestamp: this._timestamp, duration: this._duration ?? undefined });
+    if (this._closed) {
+      throw new WebCodecsDOMException('VideoFrame is closed', 'InvalidStateError');
+    }
+    const cloned = new VideoFrame(this._data, {
+      format: this._format ?? undefined,
+      codedWidth: this._codedWidth,
+      codedHeight: this._codedHeight,
+      timestamp: this._timestamp,
+      duration: this._duration ?? undefined,
+    } as VideoFrameBufferInit);
+    return cloned;
   }
 }
 
