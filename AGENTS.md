@@ -251,7 +251,7 @@ See the todo list in the conversation for current task status.
 - [x] Discover node-webcodecs exists and works (87/88 tests pass)
 - [x] Fork to subtleGradient/node-webcodecs
 - [x] Add as git submodule
-- [x] Add vitest spec-compliance test suite (159 tests now!)
+- [x] Add vitest spec-compliance test suite (167 tests now!)
 - [x] Run browser tests to validate tests against native WebCodecs (all pass)
 
 ### Phase 2: End-to-End Verification (COMPLETE)
@@ -265,7 +265,8 @@ See the todo list in the conversation for current task status.
 ### Phase 3: Known Bugs (documented in .beads/spec-compliance-bugs.md)
 - [x] Fix audio timestamp bug (time_base + initial_padding compensation)
 - [ ] Fix VideoFrame/AudioData properties not resetting after close
-- [ ] Fix encode-after-flush producing no output on second batch
+- [ ] Fix encode/decode-after-flush producing no output on second batch
+- [ ] Fix reset-then-reconfigure crash (CRITICAL - native crash)
 - [ ] Add missing `ondequeue` event handler
 
 ### Phase 4: Polish & Ship
