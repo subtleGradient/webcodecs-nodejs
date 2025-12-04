@@ -1,5 +1,5 @@
 /**
- * Native Decode Integration Tests
+ * Native Decode Integration Tests (Node.js only)
  * 
  * These tests verify that our native N-API addon can actually decode video.
  * We use "secret colors" - specific RGB values encoded into test frames.
@@ -9,6 +9,9 @@
  * - A solid red frame encoded as VP8 should decode to red pixels
  * - If it decodes to green or garbage, the decoder is broken
  * - No false positives possible with this approach
+ * 
+ * NOTE: These tests only run in Node.js since they test our N-API addon.
+ * In browser, the native WebCodecs API is used instead.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';

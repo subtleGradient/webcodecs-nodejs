@@ -1,5 +1,5 @@
 /**
- * Native Encode Integration Tests
+ * Native Encode Integration Tests (Node.js only)
  * 
  * These tests verify that our native N-API addon can encode video.
  * We use the round-trip approach:
@@ -9,6 +9,9 @@
  * 4. Verify the secret color matches
  * 
  * If the color survives the round-trip, we know both encode and decode work.
+ * 
+ * NOTE: These tests only run in Node.js since they test our N-API addon.
+ * In browser, the native WebCodecs API is used instead.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
