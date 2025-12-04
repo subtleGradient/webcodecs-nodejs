@@ -122,7 +122,7 @@ export class VideoEncoder {
   private _output: (chunk: unknown, metadata?: unknown) => void;
   private _error: (error: Error) => void;
   private _config: VideoEncoderConfig | null = null;
-  private _pendingEncodes: Array<{ frameData: Uint8Array; width: number; height: number; timestamp: number; duration: number | null; options?: { keyFrame?: boolean } }> = [];
+  private _pendingEncodes: Array<{ frameData: Uint8Array; width: number; height: number; timestamp: number; duration: number | null; options?: { keyFrame?: boolean }; copyPromise?: Promise<unknown> }> = [];
 
   constructor(init: EncoderInit) {
     this._output = init.output;
@@ -165,17 +165,22 @@ export class VideoEncoder {
     const height = frame.codedHeight;
     const i420Size = frame.allocationSize({ format: 'I420' });
     const frameData = new Uint8Array(i420Size);
-    frame.copyTo(frameData, { format: 'I420' });
     
     // Queue the encode with copied data
     this._encodeQueueSize++;
+    
+    // Handle async copyTo - queue the promise
+    const copyPromise = frame.copyTo(frameData, { format: 'I420' });
+    
+    // Store the pending encode with the copy promise
     this._pendingEncodes.push({ 
       frameData, 
       width, 
       height, 
       timestamp: frame.timestamp, 
       duration: frame.duration, 
-      options 
+      options,
+      copyPromise
     });
   }
 
@@ -190,7 +195,11 @@ export class VideoEncoder {
     }
     
     // Process all pending encodes
-    for (const { frameData, width, height, timestamp, duration } of this._pendingEncodes) {
+    for (const { frameData, width, height, timestamp, duration, copyPromise } of this._pendingEncodes) {
+      // Wait for copy to complete if needed
+      if (copyPromise) {
+        await copyPromise;
+      }
       try {
         // Encode using native addon - pass I420 directly
         const result = nativeAddon.encodeVP8Frame(Buffer.from(frameData), {
@@ -673,7 +682,7 @@ export class VideoFrame {
     }
   }
 
-  copyTo(destination: BufferSource, options?: { format?: string }): void {
+  async copyTo(destination: BufferSource, options?: { format?: string }): Promise<Array<{ offset: number; stride: number }>> {
     if (this._closed) {
       throw new WebCodecsDOMException('VideoFrame is closed', 'InvalidStateError');
     }
@@ -683,8 +692,12 @@ export class VideoFrame {
       : new Uint8Array((destination as ArrayBufferView).buffer, (destination as ArrayBufferView).byteOffset, (destination as ArrayBufferView).byteLength);
     
     const requestedFormat = options?.format ?? this._format;
+    const width = this._codedWidth;
+    const height = this._codedHeight;
     
-    if (!this._data) return;
+    if (!this._data) {
+      return [];
+    }
     
     const srcView = new Uint8Array(this._data);
     
@@ -693,12 +706,41 @@ export class VideoFrame {
       destView.set(srcView.subarray(0, Math.min(srcView.length, destView.length)));
     } else if (this._format === 'I420' && (requestedFormat === 'RGB' || requestedFormat === 'RGB24')) {
       // Convert I420 to RGB24
-      const rgb = i420ToRgb24(srcView, this._codedWidth, this._codedHeight);
+      const rgb = i420ToRgb24(srcView, width, height);
       destView.set(rgb.subarray(0, Math.min(rgb.length, destView.length)));
+    } else if (this._format === 'I420' && requestedFormat === 'RGBA') {
+      // Convert I420 to RGBA
+      const rgb = i420ToRgb24(srcView, width, height);
+      const rgba = new Uint8Array(width * height * 4);
+      for (let i = 0; i < width * height; i++) {
+        rgba[i * 4] = rgb[i * 3];
+        rgba[i * 4 + 1] = rgb[i * 3 + 1];
+        rgba[i * 4 + 2] = rgb[i * 3 + 2];
+        rgba[i * 4 + 3] = 255;
+      }
+      destView.set(rgba.subarray(0, Math.min(rgba.length, destView.length)));
     } else {
       // Fallback: just copy raw data
       destView.set(srcView.subarray(0, Math.min(srcView.length, destView.length)));
     }
+    
+    // Return PlaneLayout array based on format
+    if (requestedFormat === 'I420' || requestedFormat === 'YUV420P' || this._format === 'I420') {
+      const ySize = width * height;
+      const uvWidth = width / 2;
+      const uvHeight = height / 2;
+      return [
+        { offset: 0, stride: width },                    // Y plane
+        { offset: ySize, stride: uvWidth },              // U plane
+        { offset: ySize + uvWidth * uvHeight, stride: uvWidth }  // V plane
+      ];
+    } else if (requestedFormat === 'RGBA') {
+      return [{ offset: 0, stride: width * 4 }];
+    } else if (requestedFormat === 'RGB' || requestedFormat === 'RGB24') {
+      return [{ offset: 0, stride: width * 3 }];
+    }
+    
+    return [{ offset: 0, stride: width }];
   }
 
   close(): void {
@@ -791,8 +833,50 @@ export class AudioData {
     });
   }
 
-  copyTo(_destination: BufferSource, _options?: unknown): void {
-    // Implementation would copy audio data to destination buffer
+  allocationSize(options: { planeIndex: number }): number {
+    // Get bytes per sample based on format
+    const bytesPerSample = this._format.startsWith('f32') ? 4 :
+                           this._format.startsWith('s32') ? 4 :
+                           this._format.startsWith('s16') ? 2 : 1;
+    
+    // For planar formats, each plane has numberOfFrames samples
+    // For interleaved formats, planeIndex 0 has all data
+    if (this._format.endsWith('-planar')) {
+      return this._numberOfFrames * bytesPerSample;
+    } else {
+      // Interleaved: all channels in plane 0
+      if (options.planeIndex === 0) {
+        return this._numberOfFrames * this._numberOfChannels * bytesPerSample;
+      }
+      return 0;
+    }
+  }
+
+  copyTo(destination: BufferSource, options: { planeIndex: number }): void {
+    if (this._closed) {
+      throw new WebCodecsDOMException('AudioData is closed', 'InvalidStateError');
+    }
+    
+    const destView = destination instanceof ArrayBuffer 
+      ? new Uint8Array(destination) 
+      : new Uint8Array((destination as ArrayBufferView).buffer, (destination as ArrayBufferView).byteOffset, (destination as ArrayBufferView).byteLength);
+    
+    const srcView = new Uint8Array(this._data);
+    const bytesPerSample = this._format.startsWith('f32') ? 4 :
+                           this._format.startsWith('s32') ? 4 :
+                           this._format.startsWith('s16') ? 2 : 1;
+    
+    if (this._format.endsWith('-planar')) {
+      // Planar: each plane is numberOfFrames * bytesPerSample
+      const planeSize = this._numberOfFrames * bytesPerSample;
+      const offset = options.planeIndex * planeSize;
+      destView.set(srcView.subarray(offset, offset + planeSize));
+    } else {
+      // Interleaved: all data in plane 0
+      if (options.planeIndex === 0) {
+        destView.set(srcView.subarray(0, Math.min(srcView.length, destView.length)));
+      }
+    }
   }
 }
 
