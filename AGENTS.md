@@ -247,20 +247,28 @@ tasks/                 # Implementation task tracking
 
 See the todo list in the conversation for current task status.
 
-### Phase 1: Validate & Test (Current)
+### Phase 1: Validate & Test (COMPLETE)
 - [x] Discover node-webcodecs exists and works (87/88 tests pass)
 - [x] Fork to subtleGradient/node-webcodecs
 - [x] Add as git submodule
-- [x] Add vitest spec-compliance test suite (64 tests)
-- [ ] Run browser tests to validate tests against native WebCodecs
+- [x] Add vitest spec-compliance test suite (159 tests now!)
+- [x] Run browser tests to validate tests against native WebCodecs (all pass)
 
-### Phase 2: Fix Spec Gaps
+### Phase 2: End-to-End Verification (COMPLETE)
+- [x] Add QR code round-trip verification tests (video)
+- [x] Test VP8, VP9, H.264, HEVC, AV1 codecs with QR verification
+- [x] Add audio round-trip verification tests (Opus, AAC, FLAC)
+- [x] Test multiple resolutions (128x128 to 640x480)
+- [x] Test multiple bitrates (500kbps to 5Mbps)
+- [x] Document encode-after-flush bug (HIGH severity, fails in node-webcodecs)
+
+### Phase 3: Known Bugs (documented in .beads/spec-compliance-bugs.md)
 - [x] Fix audio timestamp bug (time_base + initial_padding compensation)
-- [ ] Find other spec compliance issues via WPT or browser comparison
-- [ ] Submit PRs to upstream
+- [ ] Fix VideoFrame/AudioData properties not resetting after close
+- [ ] Fix encode-after-flush producing no output on second batch
+- [ ] Add missing `ondequeue` event handler
 
-### Phase 3: Polish & Ship
-- [ ] Ensure all tests pass in browser AND Node.js
-- [ ] Add QR code round-trip verification tests
+### Phase 4: Polish & Ship
+- [ ] Submit PRs to upstream with all test improvements
 - [ ] Documentation improvements
 - [ ] Help upstream with CI/CD, prebuilds
