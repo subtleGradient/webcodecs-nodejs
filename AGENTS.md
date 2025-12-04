@@ -10,6 +10,7 @@ This is for the $10k WebCodecs Node.js Challenge.
 We follow strict Red-Green-Refactor Test-Driven Development:
 
 1. **RED**: Write a failing test first. The test defines the requirement.
+   - **CRITICAL**: Run the test in the BROWSER first (`npm run test:browser`) to verify it passes with the native WebCodecs API. If the test fails in the browser, the test itself is wrong—fix the test before proceeding to GREEN.
 2. **GREEN**: Write the minimum code to make the test pass. No more.
 3. **REFACTOR**: Clean up without changing behavior. Tests must stay green.
 4. **COMMIT & PUSH**: After each RGR cycle when tests pass, commit and push.
