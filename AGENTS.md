@@ -2,8 +2,26 @@
 
 ## Project Goal
 
-Implement the WebCodecs API for Node.js using N-API + FFmpeg native bindings (Linux first).
-This is for the $10k WebCodecs Node.js Challenge.
+**NEW STRATEGY**: Fork and perfect `node-webcodecs` (caseymanos/node-webcodecs).
+
+We discovered an existing MIT-licensed implementation that passes 87/88 of our tests.
+Instead of building from scratch, we're contributing to make it 100% spec-compliant.
+
+### Why Fork Instead of Build?
+- `node-webcodecs` already has working VP8, VP9, H.264, HEVC, AV1, Opus, AAC
+- Hardware acceleration support (VideoToolbox, NVENC, QSV, VAAPI)
+- Worker thread pool for async encoding
+- 87/88 tests passing - only 1 audio timestamp bug found
+
+### Our Contribution Strategy
+1. Add implementation-agnostic vitest test suite (runs in browser AND Node.js)
+2. Find and fix spec compliance gaps
+3. Submit PRs to upstream
+4. Help them win (or share) the $10k challenge
+
+### Repository Structure
+- `node-webcodecs-fork/` - Git submodule of our fork (subtleGradient/node-webcodecs)
+- Tests run against fork with `npm run test:spec` in the submodule
 
 ## Development Methodology: Kent Beck-Style RGR TDD
 
@@ -17,11 +35,30 @@ We follow strict Red-Green-Refactor Test-Driven Development:
 
 ### Git Workflow
 
-After completing each RED→GREEN→REFACTOR cycle:
-1. Run `npm test` to verify all tests pass
-2. `git add -A` to stage changes
-3. `git commit -m "feat: <description of what was added>"` 
-4. `git push` to push to remote
+**CRITICAL: Two-repo workflow (parent + submodule)**
+
+We have TWO git repositories to maintain:
+1. **Parent repo** (`2025-12-03-subtleGradient-webcodecs-nodejs/`) - Our test harness, AGENTS.md, research
+2. **Submodule** (`node-webcodecs-fork/`) - The fork we're improving
+
+**After changes to the SUBMODULE (node-webcodecs-fork/):**
+```bash
+cd node-webcodecs-fork
+git add -A && git commit -m "fix: description" && git push origin add-vitest-spec-tests
+cd ..
+git add node-webcodecs-fork  # Update submodule reference in parent
+```
+
+**After changes to the PARENT repo:**
+```bash
+git add -A && git commit -m "docs: update AGENTS.md" && git push
+```
+
+**After each RGR cycle:**
+1. Run tests to verify changes work
+2. Commit to appropriate repo (submodule first if both changed)
+3. Push immediately - don't batch commits
+4. **Update AGENTS.md** status checkboxes to reflect progress
 
 Commit message format:
 - `feat:` - New feature or capability
@@ -30,6 +67,16 @@ Commit message format:
 - `test:` - Test-only changes
 - `docs:` - Documentation changes
 - `chore:` - Build/tooling changes
+
+### Keeping AGENTS.md Fresh
+
+**MANDATORY**: Update this file whenever:
+- A task is completed (check the box)
+- A new issue is discovered (add to Known Issues)
+- Strategy changes (update Project Goal section)
+- New learnings (add to relevant section)
+
+**Never let AGENTS.md go stale** - it's the source of truth for project status.
 
 ### Scientific Verification Principle
 
@@ -200,20 +247,20 @@ tasks/                 # Implementation task tracking
 
 See the todo list in the conversation for current task status.
 
-### Phase 1: Foundation (Current)
-- [ ] Test fixtures with secret color verification
-- [ ] N-API build infrastructure
-- [ ] Codec string parser
-- [ ] Basic NativeVideoDecoder (VP8)
+### Phase 1: Validate & Test (Current)
+- [x] Discover node-webcodecs exists and works (87/88 tests pass)
+- [x] Fork to subtleGradient/node-webcodecs
+- [x] Add as git submodule
+- [x] Add vitest spec-compliance test suite (64 tests)
+- [ ] Run browser tests to validate tests against native WebCodecs
 
-### Phase 2: Core Functionality
-- [ ] NativeVideoEncoder (VP8)
-- [ ] VideoFrame with copyTo()
-- [ ] Threading model
-- [ ] Round-trip tests
+### Phase 2: Fix Spec Gaps
+- [x] Fix audio timestamp bug (time_base + initial_padding compensation)
+- [ ] Find other spec compliance issues via WPT or browser comparison
+- [ ] Submit PRs to upstream
 
-### Phase 3: Expansion
-- [ ] H.264 support
-- [ ] VP9 support
-- [ ] Audio codecs
-- [ ] Hardware acceleration detection
+### Phase 3: Polish & Ship
+- [ ] Ensure all tests pass in browser AND Node.js
+- [ ] Add QR code round-trip verification tests
+- [ ] Documentation improvements
+- [ ] Help upstream with CI/CD, prebuilds

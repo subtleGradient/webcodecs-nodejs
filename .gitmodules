@@ -25,3 +25,6 @@
 [submodule ".refs/effect-native"]
 	path = .refs/effect-native
 	url = https://github.com/effect-native/effect-native.git
+[submodule "node-webcodecs-fork"]
+	path = node-webcodecs-fork
+	url = https://github.com/subtleGradient/node-webcodecs.git
